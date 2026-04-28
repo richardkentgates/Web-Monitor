@@ -144,7 +144,7 @@
 
 <h1>WordPress Monitor</h1>
 <p style="color: var(--text-muted); margin-bottom: 20px;">
-  Checks WordPress sites every 60 seconds and reports HTTP status + response time.
+  Checks WordPress sites every 60 seconds and reports reachability + response time.
 </p>
 
 <div id="countdown">Next check in: 60s</div>
@@ -164,7 +164,7 @@
   const MAX_HISTORY = 20;
   let countdown = POLL_INTERVAL;
 
-  // MIGRATION: ensure history exists for old entries
+  // MIGRATION: ensure history exists
   const rawSites = JSON.parse(localStorage.getItem("sites") || "[]");
   const sites = rawSites.map(s => ({
     url: s.url,
@@ -236,15 +236,6 @@
     reader.readAsText(file);
   });
 
-  function fetchWithTimeout(url, options = {}) {
-    return Promise.race([
-      fetch(url, options),
-      new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("timeout")), TIMEOUT_MS)
-      )
-    ]);
-  }
-
   function addHistoryEntry(site, status) {
     if (!Array.isArray(site.history)) site.history = [];
 
@@ -264,26 +255,25 @@
     const start = performance.now();
 
     try {
-      const res = await fetchWithTimeout(site.url, { cache: "no-store" });
+      await fetch(site.url, {
+        method: "GET",
+        mode: "no-cors",
+        cache: "no-store"
+      });
+
       const end = performance.now();
-
       const seconds = ((end - start) / 1000).toFixed(2);
-      const status = `HTTP ${res.status}`;
 
-      sites[index].status = status;
+      sites[index].status = "Reachable";
       sites[index].responseTime = `${seconds}s`;
 
-      addHistoryEntry(sites[index], status);
+      addHistoryEntry(sites[index], "Reachable");
 
     } catch (e) {
-      const status = e.message === "timeout"
-        ? "No response (timeout)"
-        : "Error fetching";
+      sites[index].status = "Unreachable";
+      sites[index].responseTime = "N/A";
 
-      sites[index].status = status;
-      sites[index].responseTime = e.message === "timeout" ? ">30s" : "N/A";
-
-      addHistoryEntry(sites[index], status);
+      addHistoryEntry(sites[index], "Unreachable");
     }
 
     save();
@@ -326,10 +316,6 @@
     for (let i = 0; i < sites.length; i++) {
       await checkSite(sites[i], i);
     }
-  }
-
-  if (Notification.permission !== "granted") {
-    Notification.requestPermission();
   }
 
   setInterval(() => {
