@@ -202,15 +202,18 @@ document.addEventListener("DOMContentLoaded", () => {
 
   updateNotificationStatus();
 
-  // Normalize site objects so render never crashes
+  function normalize(site) {
+    return {
+      url: site.url || "",
+      status: site.status || "Not checked yet",
+      responseTime: site.responseTime || "N/A",
+      lastChecked: site.lastChecked || "Never",
+      history: Array.isArray(site.history) ? site.history : []
+    };
+  }
+
   const rawSites = JSON.parse(localStorage.getItem("sites") || "[]");
-  const sites = rawSites.map(s => ({
-    url: s.url,
-    status: s.status || "Not checked yet",
-    responseTime: s.responseTime || "N/A",
-    lastChecked: s.lastChecked || "Never",
-    history: Array.isArray(s.history) ? s.history : []
-  }));
+  const sites = rawSites.map(normalize);
 
   function save() {
     localStorage.setItem("sites", JSON.stringify(sites));
@@ -220,13 +223,7 @@ document.addEventListener("DOMContentLoaded", () => {
   function addSite() {
     const url = document.getElementById("urlInput").value.trim();
     if (!url) return;
-    sites.push({
-      url,
-      status: "Not checked yet",
-      responseTime: "N/A",
-      lastChecked: "Never",
-      history: []
-    });
+    sites.push(normalize({ url }));
     save();
   }
 
@@ -259,15 +256,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const imported = JSON.parse(e.target.result);
         if (Array.isArray(imported)) {
           sites.length = 0;
-          imported.forEach(s => {
-            sites.push({
-              url: s.url,
-              status: s.status || "Not checked yet",
-              responseTime: s.responseTime || "N/A",
-              lastChecked: s.lastChecked || "Never",
-              history: Array.isArray(s.history) ? s.history : []
-            });
-          });
+          imported.forEach(s => sites.push(normalize(s)));
           save();
         }
       } catch {
@@ -278,8 +267,6 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   function addHistoryEntry(site, status) {
-    if (!Array.isArray(site.history)) site.history = [];
-
     const now = new Date().toLocaleString();
     const last = site.history[site.history.length - 1];
 
@@ -360,9 +347,9 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   async function checkAll() {
-    for (let i = 0; i < sites.length; i++) {
-      await checkSite(sites[i], i);
-    }
+    await Promise.all(
+      sites.map((site, i) => checkSite(site, i))
+    );
   }
 
   setInterval(() => {
@@ -376,7 +363,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
   render();
 
-  // Expose functions globally
   window.enableNotifications = enableNotifications;
   window.addSite = addSite;
   window.removeSite = removeSite;
