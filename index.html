@@ -7,7 +7,9 @@
     :root {
       --bg: #0f172a;
       --panel: #1e293b;
+      --panel-red: #3f1d1d;
       --border: #334155;
+      --border-red: #7f1d1d;
       --accent: #3b82f6;
       --accent-soft: rgba(59,130,246,0.15);
       --text: #e2e8f0;
@@ -78,6 +80,12 @@
       border: 1px solid var(--border);
       box-shadow: var(--shadow);
       min-height: 150px;
+      transition: background 0.2s, border 0.2s;
+    }
+
+    .site.unreachable {
+      background: var(--panel-red);
+      border-color: var(--border-red);
     }
 
     .site strong {
@@ -194,11 +202,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
   updateNotificationStatus();
 
+  // Normalize site objects so render never crashes
   const rawSites = JSON.parse(localStorage.getItem("sites") || "[]");
   const sites = rawSites.map(s => ({
     url: s.url,
     status: s.status || "Not checked yet",
-    responseTime: s.responseTime || null,
+    responseTime: s.responseTime || "N/A",
     lastChecked: s.lastChecked || "Never",
     history: Array.isArray(s.history) ? s.history : []
   }));
@@ -214,7 +223,7 @@ document.addEventListener("DOMContentLoaded", () => {
     sites.push({
       url,
       status: "Not checked yet",
-      responseTime: null,
+      responseTime: "N/A",
       lastChecked: "Never",
       history: []
     });
@@ -250,7 +259,15 @@ document.addEventListener("DOMContentLoaded", () => {
         const imported = JSON.parse(e.target.result);
         if (Array.isArray(imported)) {
           sites.length = 0;
-          imported.forEach(s => sites.push(s));
+          imported.forEach(s => {
+            sites.push({
+              url: s.url,
+              status: s.status || "Not checked yet",
+              responseTime: s.responseTime || "N/A",
+              lastChecked: s.lastChecked || "Never",
+              history: Array.isArray(s.history) ? s.history : []
+            });
+          });
           save();
         }
       } catch {
@@ -324,11 +341,11 @@ document.addEventListener("DOMContentLoaded", () => {
         .join("");
 
       const div = document.createElement("div");
-      div.className = "site";
+      div.className = "site" + (site.status === "Unreachable" ? " unreachable" : "");
       div.innerHTML = `
         <strong>${site.url}</strong>
         <div class="status">Status: ${site.status}</div>
-        <div class="status">Response: ${site.responseTime || "N/A"}</div>
+        <div class="status">Response: ${site.responseTime}</div>
         <div class="last-check">Last checked: ${site.lastChecked}</div>
 
         <button class="history-btn" onclick="toggleHistory(${i})">History</button>
