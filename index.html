@@ -12,154 +12,133 @@
       --accent-soft: rgba(59,130,246,0.15);
       --text: #e2e8f0;
       --text-muted: #94a3b8;
-      --radius: 10px;
-      --shadow: 0 10px 25px rgba(0,0,0,0.35);
+      --radius: 8px;
+      --shadow: 0 4px 12px rgba(0,0,0,0.25);
     }
 
     body {
       font-family: system-ui, sans-serif;
-      max-width: 1200px;
-      margin: 40px auto;
-      padding: 20px;
-      background: radial-gradient(circle at top, #1e293b 0, #020617 60%);
+      max-width: 1400px;
+      margin: 20px auto;
+      padding: 10px;
+      background: #0f172a;
       color: var(--text);
     }
 
     h1 {
-      margin-bottom: 10px;
-      font-size: 26px;
+      margin-bottom: 5px;
+      font-size: 20px;
       font-weight: 600;
       color: var(--accent);
     }
 
     input, button {
-      padding: 10px;
-      margin: 5px 0;
+      padding: 6px 8px;
+      margin: 3px 0;
       border-radius: var(--radius);
       border: 1px solid var(--border);
       background: var(--panel);
       color: var(--text);
-    }
-
-    input::placeholder {
-      color: var(--text-muted);
+      font-size: 13px;
     }
 
     button {
       cursor: pointer;
-      background: linear-gradient(135deg, #2563eb, #3b82f6);
+      background: var(--accent);
       border: none;
       color: white;
       font-weight: 500;
-      box-shadow: 0 8px 18px rgba(37,99,235,0.35);
+      box-shadow: 0 4px 10px rgba(37,99,235,0.35);
       transition: 0.15s ease;
     }
 
     button:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 12px 26px rgba(37,99,235,0.45);
+      transform: translateY(-1px);
+      box-shadow: 0 6px 14px rgba(37,99,235,0.45);
     }
 
     #countdown {
       font-weight: bold;
-      margin-bottom: 20px;
-      font-size: 18px;
+      margin-bottom: 10px;
+      font-size: 14px;
       color: var(--accent);
     }
 
     #sites {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-      gap: 16px;
-      margin-top: 20px;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 10px;
+      margin-top: 10px;
     }
 
     .site {
       background: var(--panel);
-      padding: 14px;
+      padding: 10px;
       border-radius: var(--radius);
       border: 1px solid var(--border);
       box-shadow: var(--shadow);
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-      min-height: 180px;
+      min-height: 130px;
     }
 
     .site strong {
-      font-size: 15px;
+      font-size: 13px;
       color: var(--accent);
       word-break: break-all;
     }
 
     .status {
-      font-size: 13px;
+      font-size: 12px;
       color: var(--text-muted);
-      margin-top: 6px;
+      margin-top: 4px;
     }
 
     .remove-btn, .history-btn {
       background: var(--accent-soft);
       color: var(--accent);
       border: 1px solid var(--accent);
-      padding: 6px 10px;
-      border-radius: 6px;
+      padding: 4px 6px;
+      border-radius: 5px;
       cursor: pointer;
-      font-size: 12px;
-      margin-top: 10px;
+      font-size: 11px;
+      margin-top: 6px;
       transition: 0.15s ease;
-      align-self: flex-start;
-    }
-
-    .remove-btn:hover, .history-btn:hover {
-      background: rgba(59,130,246,0.25);
-      transform: translateY(-1px);
     }
 
     .history-panel {
-      margin-top: 10px;
-      padding: 10px;
+      margin-top: 6px;
+      padding: 6px;
       background: #0f172a;
-      border-radius: 6px;
+      border-radius: 5px;
       border: 1px solid var(--border);
-      max-height: 150px;
+      max-height: 100px;
       overflow-y: auto;
-      font-size: 12px;
+      font-size: 11px;
       display: none;
     }
 
     .history-entry {
-      margin-bottom: 6px;
+      margin-bottom: 4px;
       color: var(--text-muted);
-    }
-
-    .small-btn {
-      padding: 8px 12px;
-      font-size: 12px;
-      margin-left: 6px;
     }
   </style>
 </head>
 <body>
 
 <h1>WordPress Monitor</h1>
-<p style="color: var(--text-muted); margin-bottom: 20px;">
-  Checks WordPress sites every 60 seconds and reports reachability + response time.
-</p>
 
-<button onclick="enableNotifications()" class="small-btn">Enable Notifications</button>
+<button id="notifBtn" onclick="enableNotifications()">Enable Notifications</button>
 
-<div id="notifStatus" style="margin: 10px 0; color: var(--text-muted); font-size: 14px;">
+<div id="notifStatus" style="margin: 6px 0; color: var(--text-muted); font-size: 13px;">
   Notifications: <strong>Unknown</strong>
 </div>
 
 <div id="countdown">Next check in: 60s</div>
 
-<input id="urlInput" type="url" placeholder="https://example.com" style="width:60%">
+<input id="urlInput" type="url" placeholder="https://example.com" style="width:55%">
 <button onclick="addSite()">Add</button>
 
-<button class="small-btn" onclick="exportSites()">Export</button>
-<button class="small-btn" onclick="importSites()">Import</button>
+<button onclick="exportSites()">Export</button>
+<button onclick="importSites()">Import</button>
 <input id="importFile" type="file" accept="application/json" style="display:none">
 
 <div id="sites"></div>
@@ -168,19 +147,25 @@
 document.addEventListener("DOMContentLoaded", () => {
 
   const POLL_INTERVAL = 60;
-  const TIMEOUT_MS = 30000;
   const MAX_HISTORY = 20;
   let countdown = POLL_INTERVAL;
 
+  function hideNotifButtonIfEnabled() {
+    if (Notification.permission === "granted") {
+      document.getElementById("notifBtn").style.display = "none";
+    }
+  }
+
   function enableNotifications() {
     const statusEl = document.getElementById("notifStatus");
-    statusEl.innerHTML = `Notifications: <strong>Waiting for permission…</strong>`;
+    statusEl.innerHTML = `Notifications: <strong>Waiting…</strong>`;
 
     Notification.requestPermission().then(permission => {
       if (permission === "granted") {
         statusEl.innerHTML = `Notifications: <strong style="color:#4ade80">Enabled</strong>`;
+        hideNotifButtonIfEnabled();
       } else if (permission === "denied") {
-        statusEl.innerHTML = `Notifications: <strong style="color:#f87171">Blocked in browser settings</strong>`;
+        statusEl.innerHTML = `Notifications: <strong style="color:#f87171">Blocked</strong>`;
       } else {
         statusEl.innerHTML = `Notifications: <strong>Not enabled</strong>`;
       }
@@ -193,10 +178,12 @@ document.addEventListener("DOMContentLoaded", () => {
     if (Notification.permission === "granted") {
       statusEl.innerHTML = `Notifications: <strong style="color:#4ade80">Enabled</strong>`;
     } else if (Notification.permission === "denied") {
-      statusEl.innerHTML = `Notifications: <strong style="color:#f87171">Blocked in browser settings</strong>`;
+      statusEl.innerHTML = `Notifications: <strong style="color:#f87171">Blocked</strong>`;
     } else {
       statusEl.innerHTML = `Notifications: <strong>Not enabled</strong>`;
     }
+
+    hideNotifButtonIfEnabled();
   }
 
   updateNotificationStatus();
@@ -217,12 +204,7 @@ document.addEventListener("DOMContentLoaded", () => {
   function addSite() {
     const url = document.getElementById("urlInput").value.trim();
     if (!url) return;
-    sites.push({
-      url,
-      status: "Not checked yet",
-      responseTime: null,
-      history: []
-    });
+    sites.push({ url, status: "Not checked yet", responseTime: null, history: [] });
     save();
   }
 
@@ -255,17 +237,10 @@ document.addEventListener("DOMContentLoaded", () => {
         const imported = JSON.parse(e.target.result);
         if (Array.isArray(imported)) {
           sites.length = 0;
-          imported.forEach(s => {
-            sites.push({
-              url: s.url,
-              status: s.status || "Not checked yet",
-              responseTime: s.responseTime || null,
-              history: Array.isArray(s.history) ? s.history : []
-            });
-          });
+          imported.forEach(s => sites.push(s));
           save();
         }
-      } catch (err) {
+      } catch {
         alert("Invalid JSON file");
       }
     };
@@ -287,7 +262,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     if (Notification.permission === "granted") {
-      new Notification(`${site.url}`, {
+      new Notification(site.url, {
         body: `Status changed: ${status}`,
         icon: "https://monitor.richardkentgates.com/icon.png"
       });
@@ -298,30 +273,20 @@ document.addEventListener("DOMContentLoaded", () => {
     const start = performance.now();
 
     try {
-      await fetch(site.url, {
-        method: "GET",
-        mode: "no-cors",
-        cache: "no-store"
-      });
+      await fetch(site.url, { method: "GET", mode: "no-cors", cache: "no-store" });
 
       const end = performance.now();
       const seconds = ((end - start) / 1000).toFixed(2);
 
       const newStatus = "Reachable";
-
-      if (sites[index].status !== newStatus) {
-        addHistoryEntry(sites[index], newStatus);
-      }
+      if (sites[index].status !== newStatus) addHistoryEntry(sites[index], newStatus);
 
       sites[index].status = newStatus;
       sites[index].responseTime = `${seconds}s`;
 
-    } catch (e) {
+    } catch {
       const newStatus = "Unreachable";
-
-      if (sites[index].status !== newStatus) {
-        addHistoryEntry(sites[index], newStatus);
-      }
+      if (sites[index].status !== newStatus) addHistoryEntry(sites[index], newStatus);
 
       sites[index].status = newStatus;
       sites[index].responseTime = "N/A";
@@ -340,8 +305,7 @@ document.addEventListener("DOMContentLoaded", () => {
     container.innerHTML = "";
 
     sites.forEach((site, i) => {
-      const historyArray = Array.isArray(site.history) ? site.history : [];
-      const historyHTML = historyArray
+      const historyHTML = site.history
         .map(h => `<div class="history-entry">${h.time} — ${h.status}</div>`)
         .join("");
 
@@ -350,11 +314,11 @@ document.addEventListener("DOMContentLoaded", () => {
       div.innerHTML = `
         <strong>${site.url}</strong>
         <div class="status">Status: ${site.status}</div>
-        <div class="status">Response Time: ${site.responseTime || "N/A"}</div>
+        <div class="status">Response: ${site.responseTime || "N/A"}</div>
 
         <button class="history-btn" onclick="toggleHistory(${i})">History</button>
         <div class="history-panel" id="history-${i}">
-          ${historyHTML || "<div class='history-entry'>No history yet</div>"}
+          ${historyHTML || "<div class='history-entry'>No history</div>"}
         </div>
 
         <button class="remove-btn" onclick="removeSite(${i})">Remove</button>
@@ -375,13 +339,12 @@ document.addEventListener("DOMContentLoaded", () => {
       countdown = POLL_INTERVAL;
       checkAll();
     }
-    document.getElementById("countdown").textContent =
-      `Next check in: ${countdown}s`;
+    document.getElementById("countdown").textContent = `Next check in: ${countdown}s`;
   }, 1000);
 
   render();
 
-  // Expose functions globally for onclick=""
+  // Expose functions globally
   window.enableNotifications = enableNotifications;
   window.addSite = addSite;
   window.removeSite = removeSite;
@@ -389,7 +352,7 @@ document.addEventListener("DOMContentLoaded", () => {
   window.importSites = importSites;
   window.toggleHistory = toggleHistory;
 
-}); // END DOMContentLoaded
+});
 </script>
 
 </body>
