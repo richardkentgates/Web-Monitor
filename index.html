@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>WordPress Monitor</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --panel: #1e293b;
+      --border: #334155;
+      --accent: #3b82f6;
+      --accent-soft: rgba(59,130,246,0.15);
+      --text: #e2e8f0;
+      --text-muted: #94a3b8;
+      --radius: 10px;
+      --shadow: 0 10px 25px rgba(0,0,0,0.35);
+    }
+
+    body {
+      font-family: system-ui, sans-serif;
+      max-width: 1200px;
+      margin: 40px auto;
+      padding: 20px;
+      background: radial-gradient(circle at top, #1e293b 0, #020617 60%);
+      color: var(--text);
+    }
+
+    h1 {
+      margin-bottom: 10px;
+      font-size: 26px;
+      font-weight: 600;
+      color: var(--accent);
+    }
+
+    input, button {
+      padding: 10px;
+      margin: 5px 0;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      background: var(--panel);
+      color: var(--text);
+    }
+
+    input::placeholder {
+      color: var(--text-muted);
+    }
+
+    button {
+      cursor: pointer;
+      background: linear-gradient(135deg, #2563eb, #3b82f6);
+      border: none;
+      color: white;
+      font-weight: 500;
+      box-shadow: 0 8px 18px rgba(37,99,235,0.35);
+      transition: 0.15s ease;
+    }
+
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 26px rgba(37,99,235,0.45);
+    }
+
+    #countdown {
+      font-weight: bold;
+      margin-bottom: 20px;
+      font-size: 18px;
+      color: var(--accent);
+    }
+
+    #sites {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 16px;
+      margin-top: 20px;
+    }
+
+    .site {
+      background: var(--panel);
+      padding: 14px;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      min-height: 180px;
+    }
+
+    .site strong {
+      font-size: 15px;
+      color: var(--accent);
+      word-break: break-all;
+    }
+
+    .status {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-top: 6px;
+    }
+
+    .remove-btn, .history-btn {
+      background: var(--accent-soft);
+      color: var(--accent);
+      border: 1px solid var(--accent);
+      padding: 6px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 12px;
+      margin-top: 10px;
+      transition: 0.15s ease;
+      align-self: flex-start;
+    }
+
+    .remove-btn:hover, .history-btn:hover {
+      background: rgba(59,130,246,0.25);
+      transform: translateY(-1px);
+    }
+
+    .history-panel {
+      margin-top: 10px;
+      padding: 10px;
+      background: #0f172a;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      max-height: 150px;
+      overflow-y: auto;
+      font-size: 12px;
+      display: none;
+    }
+
+    .history-entry {
+      margin-bottom: 6px;
+      color: var(--text-muted);
+    }
+
+    .small-btn {
+      padding: 8px 12px;
+      font-size: 12px;
+      margin-left: 6px;
+    }
+  </style>
+</head>
+<body>
+
+<h1>WordPress Monitor</h1>
+<p style="color: var(--text-muted); margin-bottom: 20px;">
+  Checks WordPress sites every 60 seconds and reports HTTP status + response time.
+</p>
+
+<div id="countdown">Next check in: 60s</div>
+
+<input id="urlInput" type="url" placeholder="https://example.com" style="width:60%">
+<button onclick="addSite()">Add</button>
+
+<button class="small-btn" onclick="exportSites()">Export</button>
+<button class="small-btn" onclick="importSites()">Import</button>
+<input id="importFile" type="file" accept="application/json" style="display:none">
+
+<div id="sites"></div>
+
+<script>
+  const POLL_INTERVAL = 60;
+  const TIMEOUT_MS = 30000;
+  const MAX_HISTORY = 20;
+  let countdown = POLL_INTERVAL;
+
+  // MIGRATION: ensure history exists for old entries
+  const rawSites = JSON.parse(localStorage.getItem("sites") || "[]");
+  const sites = rawSites.map(s => ({
+    url: s.url,
+    status: s.status || "Not checked yet",
+    responseTime: s.responseTime || null,
+    history: Array.isArray(s.history) ? s.history : []
+  }));
+
+  function save() {
+    localStorage.setItem("sites", JSON.stringify(sites));
+    render();
+  }
+
+  function addSite() {
+    const url = document.getElementById("urlInput").value.trim();
+    if (!url) return;
+    sites.push({
+      url,
+      status: "Not checked yet",
+      responseTime: null,
+      history: []
+    });
+    save();
+  }
+
+  function removeSite(i) {
+    sites.splice(i, 1);
+    save();
+  }
+
+  function exportSites() {
+    const blob = new Blob([JSON.stringify(sites, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "sites.json";
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function importSites() {
+    document.getElementById("importFile").click();
+  }
+
+  document.getElementById("importFile").addEventListener("change", function() {
+    const file = this.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      try {
+        const imported = JSON.parse(e.target.result);
+        if (Array.isArray(imported)) {
+          sites.length = 0;
+          imported.forEach(s => {
+            sites.push({
+              url: s.url,
+              status: s.status || "Not checked yet",
+              responseTime: s.responseTime || null,
+              history: Array.isArray(s.history) ? s.history : []
+            });
+          });
+          save();
+        }
+      } catch (err) {
+        alert("Invalid JSON file");
+      }
+    };
+    reader.readAsText(file);
+  });
+
+  function fetchWithTimeout(url, options = {}) {
+    return Promise.race([
+      fetch(url, options),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("timeout")), TIMEOUT_MS)
+      )
+    ]);
+  }
+
+  function addHistoryEntry(site, status) {
+    if (!Array.isArray(site.history)) site.history = [];
+
+    const now = new Date().toLocaleString();
+    const last = site.history[site.history.length - 1];
+
+    if (last && last.status === status) return;
+
+    site.history.push({ status, time: now });
+
+    if (site.history.length > MAX_HISTORY) {
+      site.history.splice(0, site.history.length - MAX_HISTORY);
+    }
+  }
+
+  async function checkSite(site, index) {
+    const start = performance.now();
+
+    try {
+      const res = await fetchWithTimeout(site.url, { cache: "no-store" });
+      const end = performance.now();
+
+      const seconds = ((end - start) / 1000).toFixed(2);
+      const status = `HTTP ${res.status}`;
+
+      sites[index].status = status;
+      sites[index].responseTime = `${seconds}s`;
+
+      addHistoryEntry(sites[index], status);
+
+    } catch (e) {
+      const status = e.message === "timeout"
+        ? "No response (timeout)"
+        : "Error fetching";
+
+      sites[index].status = status;
+      sites[index].responseTime = e.message === "timeout" ? ">30s" : "N/A";
+
+      addHistoryEntry(sites[index], status);
+    }
+
+    save();
+  }
+
+  function toggleHistory(i) {
+    const panel = document.getElementById("history-" + i);
+    panel.style.display = panel.style.display === "block" ? "none" : "block";
+  }
+
+  function render() {
+    const container = document.getElementById("sites");
+    container.innerHTML = "";
+
+    sites.forEach((site, i) => {
+      const historyArray = Array.isArray(site.history) ? site.history : [];
+      const historyHTML = historyArray
+        .map(h => `<div class="history-entry">${h.time} — ${h.status}</div>`)
+        .join("");
+
+      const div = document.createElement("div");
+      div.className = "site";
+      div.innerHTML = `
+        <strong>${site.url}</strong>
+        <div class="status">Status: ${site.status}</div>
+        <div class="status">Response Time: ${site.responseTime || "N/A"}</div>
+
+        <button class="history-btn" onclick="toggleHistory(${i})">History</button>
+        <div class="history-panel" id="history-${i}">
+          ${historyHTML || "<div class='history-entry'>No history yet</div>"}
+        </div>
+
+        <button class="remove-btn" onclick="removeSite(${i})">Remove</button>
+      `;
+      container.appendChild(div);
+    });
+  }
+
+  async function checkAll() {
+    for (let i = 0; i < sites.length; i++) {
+      await checkSite(sites[i], i);
+    }
+  }
+
+  if (Notification.permission !== "granted") {
+    Notification.requestPermission();
+  }
+
+  setInterval(() => {
+    countdown--;
+    if (countdown <= 0) {
+      countdown = POLL_INTERVAL;
+      checkAll();
+    }
+    document.getElementById("countdown").textContent =
+      `Next check in: ${countdown}s`;
+  }, 1000);
+
+  render();
+</script>
+
+</body>
+</html>
